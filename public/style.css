@@ -67,11 +67,42 @@ button:hover {
 
 /* 结果显示样式 */
 .results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 4px;
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
     margin-top: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 名字卡片样式 */
+.name-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.name-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(200,22,35,0.15);
+}
+
+.name-card h3 {
+    color: var(--primary-red);
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+}
+
+.name-card p {
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
 /* 加载提示样式 */

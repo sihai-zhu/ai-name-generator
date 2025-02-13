@@ -152,23 +152,30 @@ async function generateNames() {
 function displayResults(data) {
     const resultsDiv = document.getElementById('results');
     
-    if (!data.names || !Array.isArray(data.names) || data.names.length === 0) {
-        showError('生成的数据格式不正确');
-        return;
+    try {
+        // 如果返回的是字符串，尝试解析成JSON
+        const jsonData = typeof data === 'string' ? JSON.parse(data) : data;
+        
+        if (!jsonData.names || !Array.isArray(jsonData.names) || jsonData.names.length === 0) {
+            showError('生成的数据格式不正确');
+            return;
+        }
+
+        let html = '';
+        jsonData.names.forEach(item => {
+            html += `
+                <div class="name-card">
+                    <h3>${escapeHtml(item.english_name)}</h3>
+                    <p>${escapeHtml(item.meaning)}</p>
+                </div>
+            `;
+        });
+
+        resultsDiv.innerHTML = html;
+        resultsDiv.style.display = 'grid';  // 使用grid布局
+    } catch (error) {
+        showError('数据解析失败：' + error.message);
     }
-
-    let html = '';
-    data.names.forEach(item => {
-        html += `
-            <div class="name-card">
-                <h2>${escapeHtml(item.english_name)}</h2>
-                <p>${escapeHtml(item.meaning)}</p>
-            </div>
-        `;
-    });
-
-    resultsDiv.innerHTML = html;
-    resultsDiv.style.display = 'block';
 }
 
 // HTML转义函数，防止XSS攻击
