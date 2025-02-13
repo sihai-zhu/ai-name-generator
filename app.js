@@ -57,6 +57,13 @@ app.post('/api/generate-names', async (req, res) => {
             throw new Error('无效的请求格式：缺少 messages 数组');
         }
 
+        // 检查 API 密钥
+        const apiKey = process.env.SILICONFLOW_API_KEY;
+        if (!apiKey) {
+            console.error('未找到 API 密钥');
+            throw new Error('服务器配置错误：未找到 API 密钥');
+        }
+
         // 构建请求体
         const requestBody = {
             model: "Pro/deepseek-ai/DeepSeek-R1",
@@ -80,7 +87,7 @@ app.post('/api/generate-names', async (req, res) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr',
+                'Authorization': `Bearer ${apiKey}`,
                 'Accept': 'application/json'
             },
             body: JSON.stringify(requestBody),
@@ -100,50 +107,39 @@ app.post('/api/generate-names', async (req, res) => {
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            throw new Error(`意外的响应类型: ${contentType}`);
+            console.error('意外的响应类型:', contentType);
+            throw new Error('API 返回了意外的响应类型');
         }
 
         const data = await response.json();
-        console.log('\nAPI 原始响应内容:', JSON.stringify(data, null, 2));
-        
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            console.error('无效的 API 响应格式:', data);
-            throw new Error('API 响应格式无效');
-        }
-
-        console.log('\nAPI 生成的名字内容:', data.choices[0].message.content);
-        console.log('\n=== 名字生成请求处理完成 ===\n');
+        console.log('\nAPI 响应数据:', JSON.stringify(data, null, 2));
 
         res.json(data);
+        
     } catch (error) {
         console.error('\n处理请求时出错:', error);
+        
+        // 返回用户友好的错误信息
         res.status(500).json({
-            error: '服务器内部错误',
-            message: error.message || '生成名字时出错，请稍后重试',
-            timestamp: new Date().toISOString()
+            error: '生成名字时出错，请稍后重试',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
 
-// 错误处理中间件
-app.use((err, req, res, next) => {
-    console.error('应用错误:', err);
-    res.status(500).json({
-        error: '服务器内部错误',
-        message: err.message || '请稍后重试',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// 获取服务器端口和主机
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
 
 // 启动服务器
 const server = app.listen(PORT, HOST, () => {
-    console.log(`\n=== 服务器启动 ===`);
-    console.log(`时间: ${new Date().toISOString()}`);
-    console.log(`地址: http://${HOST}:${PORT}`);
-    console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`=== 服务器就绪 ===\n`);
+    console.log(`服务器运行在 http://${HOST}:${PORT}`);
+});
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+    console.log('收到 SIGTERM 信号，准备关闭服务器...');
+    server.close(() => {
+        console.log('服务器已关闭');
+        process.exit(0);
+    });
 });
