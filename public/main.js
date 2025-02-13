@@ -4,22 +4,43 @@ const MAX_RETRIES = 5;
 const TIMEOUT = 120000;
 
 // 元素引用
-const generateBtn = document.getElementById('generateBtn');
-const chineseNameInput = document.getElementById('chineseName');  
-const resultArea = document.getElementById('result');
-const loadingSpinner = document.getElementById('loading');
+let generateBtn = null;
+let chineseNameInput = null;
+let resultArea = null;
+let loadingSpinner = null;
 
-// 初始化检查
-console.log('main.js 加载完成');
-console.log('按钮元素:', generateBtn);
-console.log('输入框元素:', chineseNameInput);
-console.log('结果区域元素:', resultArea);
-console.log('加载动画元素:', loadingSpinner);
+// 初始化函数
+function initializeElements() {
+    console.log('初始化元素...');
+    generateBtn = document.getElementById('generateBtn');
+    chineseNameInput = document.getElementById('chineseName');
+    resultArea = document.getElementById('result');
+    loadingSpinner = document.getElementById('loading');
+
+    console.log('按钮元素:', generateBtn);
+    console.log('输入框元素:', chineseNameInput);
+    console.log('结果区域元素:', resultArea);
+    console.log('加载动画元素:', loadingSpinner);
+
+    if (!generateBtn || !chineseNameInput || !resultArea || !loadingSpinner) {
+        console.error('某些必要的元素未找到');
+        return false;
+    }
+    return true;
+}
 
 // 导出生成名字函数供全局使用
 window.generateNames = async function() {
     console.log('generateNames 函数被调用');
-    const chineseName = chineseNameInput ? chineseNameInput.value.trim() : '';
+    
+    // 确保元素已初始化
+    if (!initializeElements()) {
+        console.error('页面元素未正确初始化');
+        alert('页面加载错误，请刷新页面重试');
+        return;
+    }
+
+    const chineseName = chineseNameInput.value.trim();
     console.log('输入的中文名:', chineseName);
     
     // 输入验证
