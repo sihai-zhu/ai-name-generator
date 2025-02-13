@@ -17,7 +17,7 @@
                    id="chineseName"
                    placeholder="请输入中文姓名"
                    aria-label="中文姓名输入框">
-            <button id="generateBtn" onclick="generateNames()">
+            <button id="generateBtn">
                 生成个性英文名
             </button>
         </div>
@@ -32,18 +32,17 @@
         <div id="result" class="result"></div>
     </main>
 
-    <!-- 添加调试信息 -->
+    <!-- JavaScript -->
     <script>
+        // 检查页面加载状态
         console.log('页面开始加载...');
-        function checkScriptLoaded() {
-            console.log('检查脚本是否加载...');
-            if (typeof generateNames === 'undefined') {
-                console.error('main.js 未正确加载');
-            } else {
-                console.log('main.js 加载成功');
-            }
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM 加载完成');
+        });
+        window.onload = function() {
+            console.log('页面完全加载完成');
+        };
     </script>
-    <script src="main.js" onload="checkScriptLoaded()"></script>
+    <script src="main.js"></script>
 </body>
 </html>
