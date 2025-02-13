@@ -7,8 +7,6 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔤</text></svg>">
     <link rel="stylesheet" href="style.css">
-    <script>console.log('页面开始加载...');</script>
-    <script src="main.js"></script>
 </head>
 <body>
     <main class="container">
@@ -19,7 +17,7 @@
                    id="chineseName"
                    placeholder="请输入中文姓名"
                    aria-label="中文姓名输入框">
-            <button id="generateBtn">
+            <button id="generateBtn" onclick="generateNames()">
                 生成个性英文名
             </button>
         </div>
@@ -33,5 +31,19 @@
         <!-- 结果显示 -->
         <div id="result" class="result"></div>
     </main>
+
+    <!-- 添加调试信息 -->
+    <script>
+        console.log('页面开始加载...');
+        function checkScriptLoaded() {
+            console.log('检查脚本是否加载...');
+            if (typeof generateNames === 'undefined') {
+                console.error('main.js 未正确加载');
+            } else {
+                console.log('main.js 加载成功');
+            }
+        }
+    </script>
+    <script src="main.js" onload="checkScriptLoaded()"></script>
 </body>
 </html>

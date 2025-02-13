@@ -16,6 +16,9 @@ console.log('输入框元素:', chineseNameInput);
 console.log('结果区域元素:', resultArea);
 console.log('加载动画元素:', loadingSpinner);
 
+// 导出生成名字函数供全局使用
+window.generateNames = generateNames;
+
 // 错误消息
 const ERROR_MESSAGES = {
     NETWORK: '网络连接错误，请检查您的网络连接并重试。',
