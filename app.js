@@ -54,14 +54,17 @@ app.use(express.static(path.join(__dirname, 'public'), {
         }
         // 设置缓存控制
         res.set('Cache-Control', 'public, max-age=86400');
-        // 添加调试头
-        res.set('X-Debug-Path', filePath);
     }
 }));
 
 // 主页路由
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 健康检查端点
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // 代理 API 请求
@@ -120,16 +123,19 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 // 启动服务器
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
+const server = app.listen(PORT, () => {
+    console.log(`服务器已启动，运行在端口 ${PORT}`);
+    console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
+    console.log('你可以通过以下地址访问:');
+    console.log(`- 本地访问: http://localhost:${PORT}`);
+    console.log(`- 局域网访问: http://127.0.0.1:${PORT}`);
 });
 
 // 优雅关闭
 process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
+    console.log('收到 SIGTERM 信号: 正在关闭 HTTP 服务器');
     server.close(() => {
-        console.log('HTTP server closed');
+        console.log('HTTP 服务器已关闭');
         process.exit(0);
     });
 });
