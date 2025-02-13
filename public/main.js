@@ -33,7 +33,7 @@ const meanings = {
 };
 
 // API参数配置
-const API_ENDPOINT = 'https://api-prod.siliconflow.com/v1/chat/completions';  // 使用更稳定的域名
+const API_ENDPOINT = 'https://api-prod.siliconflow.com/v1/chat/completions';
 const MODEL_NAME = 'Pro/deepseek-ai/DeepSeek-R1';
 const API_KEY = 'sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr';
 
@@ -45,16 +45,18 @@ async function generateNames() {
     }
 
     const requestBody = {
+        messages: [
+            {
+                role: "system",
+                content: "你是一个专业的英文名字起名专家。你需要根据用户输入的中文名字，生成合适的英文名字。"
+            },
+            {
+                role: "user",
+                content: `请根据我的中文名字"${chineseName}"，生成5个适合我的英文名字。每个名字都要包含First Name和Last Name，并说明名字的含义和为什么适合我。请用Markdown格式输出，每个名字占一段，名字本身用加粗显示。`
+            }
+        ],
         model: MODEL_NAME,
-        messages: [{
-            role: 'system',
-            content: '你是一个专业的英文起名专家。请为用户生成英文名。请严格按照以下格式返回5个名字：{"names":[{"english_name":"英文名","meaning":"含义说明"}]}'
-        }, {
-            role: 'user',
-            content: `请根据中文名「${chineseName}」生成5个英文名，要求：1. 结合原名的发音或含义 2. 名字要有趣且富有创意 3. 提供详细的中文解释`
-        }],
-        temperature: 0.8,
-        top_p: 0.95,
+        temperature: 0.7,
         max_tokens: 2000,
         stream: false
     };
