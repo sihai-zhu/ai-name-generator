@@ -29,6 +29,14 @@ function initializeElements() {
     return true;
 }
 
+// 确保在 DOM 加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM 加载完成');
+    if (!initializeElements()) {
+        console.error('页面初始化失败');
+    }
+});
+
 // 导出生成名字函数供全局使用
 window.generateNames = async function() {
     console.log('generateNames 函数被调用');
