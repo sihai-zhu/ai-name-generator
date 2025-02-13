@@ -1,0 +1,19 @@
+{
+  "name": "ai_coding",
+  "version": "1.0.0",
+  "description": "AI英文名生成器 - 基于DeepSeek-R1模型",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": ["ai", "name-generator", "chinese-to-english"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

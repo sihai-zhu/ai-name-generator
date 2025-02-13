@@ -1,0 +1,93 @@
+/* 基础样式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+/* 主要颜色变量 */
+:root {
+    --primary-red: #c81623; /* 中国红 */
+    --gold-accent: #ffd700; /* 点缀金色 */
+}
+
+/* 中国风容器 */
+.container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: linear-gradient(150deg, #fff5f5 0%, #ffecec 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(200,22,35,0.1);
+}
+
+/* 输入组样式 */
+.input-group {
+    display: flex;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 1rem;
+    border: 2px solid var(--primary-red);
+    border-radius: 8px;
+    font-size: 1.1rem;
+}
+
+button {
+    padding: 1rem 2rem;
+    background-color: var(--primary-red);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(200,22,35,0.3);
+}
+
+/* 错误提示样式 */
+.error {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+/* 结果显示样式 */
+.results {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 加载提示样式 */
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+.loading:after {
+    content: '...';
+    animation: dots 1.5s steps(5, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60% { content: '...'; }
+    80%, 100% { content: ''; }
+}

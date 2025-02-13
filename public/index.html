@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI英文取名</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="main.js"></script>
+</head>
+<body>
+    <main class="container">
+        <h1>AI英文取名</h1>
+        
+        <div class="input-group">
+            <input type="text" 
+                   id="nameInput"
+                   placeholder="请输入中文姓名"
+                   aria-label="中文姓名输入框">
+            <button onclick="generateNames()">
+                生成个性英文名
+            </button>
+        </div>
+
+        <!-- 错误提示 -->
+        <div id="error" class="error" style="display: none;"></div>
+
+        <!-- 结果显示 -->
+        <div id="results" class="results" style="display: none;"></div>
+    </main>
+</body>
+</html>
