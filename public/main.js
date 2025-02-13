@@ -1,143 +1,244 @@
-// 名字生成逻辑
-const firstNames = {
-    '张': ['James', 'Jack', 'Jason', 'Justin', 'Jacob'],
-    '李': ['Leo', 'Lucas', 'Liam', 'Logan', 'Louis'],
-    '王': ['William', 'Wade', 'Wesley', 'Walter', 'Warren'],
-    '陈': ['Charles', 'Chris', 'Calvin', 'Carl', 'Cameron'],
-    '林': ['Leonard', 'Lewis', 'Lance', 'Lawrence', 'Luke'],
-    '刘': ['Larry', 'Louis', 'Leon', 'Lionel', 'Lloyd'],
-    '黄': ['Henry', 'Howard', 'Harry', 'Hugh', 'Harold'],
-    '吴': ['Wayne', 'Wilson', 'Wyatt', 'Wallace', 'Wade'],
-    '周': ['Zachary', 'Zion', 'Zack', 'Zeus', 'Zane'],
-    '徐': ['Xavier', 'Xander', 'Xerxes', 'Xico', 'Xiomar']
+// 全局变量
+const API_ENDPOINT = '/api/generate-names';
+const MAX_RETRIES = 5;
+const TIMEOUT = 120000;
+
+// 元素引用
+const generateBtn = document.getElementById('generateBtn');
+const chineseNameInput = document.getElementById('chineseName');
+const resultArea = document.getElementById('result');
+const loadingSpinner = document.getElementById('loading');
+
+// 错误消息
+const ERROR_MESSAGES = {
+    NETWORK: '网络连接错误，请检查您的网络连接并重试。',
+    TIMEOUT: '请求超时。正在重试中，请耐心等待...',
+    SERVER: '服务器正在处理中，请耐心等待...',
+    INVALID_INPUT: '请输入有效的中文名字（1-10个汉字）。',
+    PARSE_ERROR: '解析返回数据时出错，请重试。'
 };
 
-const lastNames = [
-    'Smith', 'Johnson', 'Williams', 'Brown', 'Jones',
-    'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
-    'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson',
-    'Martin', 'Lee', 'Thompson', 'White', 'Harris'
-];
-
-const meanings = {
-    'James': '源自希伯来语，意为"上帝的恩赐"',
-    'Leo': '源自拉丁语，意为"狮子"',
-    'William': '源自日耳曼语，意为"坚定的保护者"',
-    'Charles': '源自日耳曼语，意为"自由人"',
-    'Leonard': '源自日耳曼语，意为"勇猛如狮"',
-    'Larry': '源自拉丁语，意为"桂冠"',
-    'Henry': '源自日耳曼语，意为"统治者"',
-    'Wayne': '源自盎格鲁撒克逊语，意为"制车人"',
-    'Zachary': '源自希伯来语，意为"上帝记得"',
-    'Xavier': '源自巴斯克语，意为"新房子"'
+// 调试工具
+const debug = {
+    log: function(type, ...args) {
+        const time = new Date().toISOString();
+        console.log(`[${time}] [${type}]`, ...args);
+    },
+    error: function(type, ...args) {
+        const time = new Date().toISOString();
+        console.error(`[${time}] [${type}]`, ...args);
+    }
 };
-
-// API参数配置
-const API_ENDPOINT = 'https://api-prod.siliconflow.com/v1/chat/completions';
-const MODEL_NAME = 'Pro/deepseek-ai/DeepSeek-R1';
-const API_KEY = 'sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr';
 
 // 显示加载动画
-function showLoading() {
-    const results = document.getElementById('results');
-    results.innerHTML = '<div class="loading">生成中...</div>';
-    results.style.display = 'block';
+function showLoading(message = '生成中...') {
+    debug.log('UI', '显示加载动画:', message);
+    loadingSpinner.style.display = 'block';
+    generateBtn.disabled = true;
+    const loadingText = loadingSpinner.querySelector('p');
+    if (loadingText) {
+        loadingText.textContent = message;
+    }
 }
 
 // 隐藏加载动画
 function hideLoading() {
-    const results = document.getElementById('results');
-    results.style.display = 'none';
+    debug.log('UI', '隐藏加载动画');
+    loadingSpinner.style.display = 'none';
+    generateBtn.disabled = false;
 }
 
-// 显示错误信息
+// 显示错误消息
 function showError(message) {
-    const errorDiv = document.getElementById('error');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 3000);
+    debug.error('UI', '显示错误:', message);
+    resultArea.innerHTML = `<div class="error">${message}</div>`;
 }
 
 // 显示结果
-function showResults(names) {
-    const results = document.getElementById('results');
-    results.innerHTML = marked.parse(names);
-    results.style.display = 'block';
+function showResult(names) {
+    debug.log('UI', '显示结果:', names);
+    resultArea.innerHTML = `
+        <div class="success">
+            <h3>为您生成的英文名字：</h3>
+            <ul>
+                ${names.map((name, index) => `
+                    <li>
+                        <span class="name-number">${index + 1}.</span>
+                        <span class="name-text">${name}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+    `;
+}
+
+// 解析 API 响应中的名字
+function parseNames(content) {
+    debug.log('解析', '开始解析内容:', content);
+    
+    try {
+        // 首先尝试按数字和点分割
+        let names = content.split(/\d+\./).filter(Boolean).map(name => name.trim());
+        debug.log('解析', '按数字和点分割结果:', names);
+        
+        // 如果没有找到名字，尝试按换行符分割
+        if (!names.length) {
+            debug.log('解析', '尝试按换行符分割');
+            names = content.split('\n').filter(line => {
+                // 过滤掉空行和不包含英文字母的行
+                return line.trim() && /[a-zA-Z]/.test(line);
+            }).map(line => {
+                // 尝试提取每行中的英文名字部分
+                const match = line.match(/[A-Za-z\s]+/);
+                return match ? match[0].trim() : null;
+            }).filter(Boolean);
+            debug.log('解析', '按换行符分割结果:', names);
+        }
+        
+        // 如果仍然没有找到名字，尝试直接提取所有英文单词
+        if (!names.length) {
+            debug.log('解析', '尝试提取所有英文单词');
+            const matches = content.match(/[A-Za-z]+(?:\s+[A-Za-z]+)*/g);
+            names = matches ? matches.filter(name => name.length > 1) : [];
+            debug.log('解析', '提取英文单词结果:', names);
+        }
+        
+        // 如果仍然没有找到名字，抛出错误
+        if (!names.length) {
+            debug.error('解析', '无法解析出名字:', content);
+            throw new Error(ERROR_MESSAGES.PARSE_ERROR);
+        }
+        
+        // 只返回前5个名字
+        const result = names.slice(0, 5);
+        debug.log('解析', '最终结果:', result);
+        return result;
+    } catch (error) {
+        debug.error('解析', '解析失败:', error);
+        throw error;
+    }
+}
+
+// 带重试的 fetch 请求
+async function fetchWithRetry(url, options, retries = MAX_RETRIES, timeout = TIMEOUT) {
+    let lastError;
+    
+    for (let i = 0; i < retries; i++) {
+        debug.log('请求', `开始第 ${i + 1} 次尝试`);
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            showLoading(`正在尝试生成（第 ${i + 1} 次）...`);
+            
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            debug.log('请求', `收到响应:`, response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                debug.error('请求', `API错误 (${response.status}):`, errorText);
+                throw new Error(response.status >= 500 ? ERROR_MESSAGES.SERVER : errorText);
+            }
+            
+            const data = await response.json();
+            debug.log('请求', '请求成功，返回数据:', data);
+            return data;
+            
+        } catch (error) {
+            debug.error('请求', `第 ${i + 1} 次尝试失败:`, error);
+            lastError = error;
+            
+            if (error.name === 'AbortError') {
+                if (i < retries - 1) {
+                    debug.log('请求', '超时，准备重试');
+                    showLoading(ERROR_MESSAGES.TIMEOUT);
+                } else {
+                    debug.error('请求', '所有重试都超时');
+                    throw new Error(ERROR_MESSAGES.TIMEOUT);
+                }
+            }
+            
+            if (i === retries - 1) {
+                debug.error('请求', '达到最大重试次数');
+                throw lastError;
+            }
+            
+            // 等待时间随重试次数增加
+            const waitTime = Math.min(2000 * Math.pow(2, i), 10000);
+            debug.log('请求', `等待 ${waitTime}ms 后重试`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    }
 }
 
 // 生成名字
 async function generateNames() {
-    const input = document.getElementById('nameInput');
-    const chineseName = input.value.trim();
+    const chineseName = chineseNameInput.value.trim();
+    debug.log('生成', '开始生成名字，输入:', chineseName);
     
-    if (!chineseName) {
-        showError('请输入中文姓名');
+    // 输入验证
+    if (!chineseName || !/^[\u4e00-\u9fa5]{1,10}$/.test(chineseName)) {
+        debug.error('生成', '输入验证失败');
+        showError(ERROR_MESSAGES.INVALID_INPUT);
         return;
     }
-
+    
     showLoading();
-
+    
     try {
-        console.log('发送请求到本地代理...');
-        const response = await fetch('/api/generate-names', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                messages: [
-                    {
-                        role: "system",
-                        content: "你是一个专业的英文名字起名专家。你需要根据用户输入的中文名字，生成合适的英文名字。"
-                    },
-                    {
-                        role: "user",
-                        content: `请根据我的中文名字"${chineseName}"，生成5个适合我的英文名字。每个名字都要包含First Name和Last Name，并说明名字的含义和为什么适合我。请用Markdown格式输出，每个名字占一段，名字本身用加粗显示。`
-                    }
-                ]
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.text();
-            console.error('API错误:', errorData);
-            throw new Error(`请求失败: ${response.status}`);
-        }
-
-        const data = await response.json();
+        debug.log('生成', '准备发送请求');
+        const data = await fetchWithRetry(
+            API_ENDPOINT,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    messages: [
+                        {
+                            role: "system",
+                            content: "你是一个专业的英文名字起名专家。请只返回英文名字，不要返回解释。"
+                        },
+                        {
+                            role: "user",
+                            content: `请根据我的中文名字"${chineseName}"，生成5个适合我的英文名字，每行一个，前面加上序号。`
+                        }
+                    ]
+                })
+            }
+        );
+        
+        debug.log('生成', '收到API响应');
+        
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            console.error('无效的API响应:', data);
-            throw new Error('API返回数据格式错误');
+            throw new Error('无效的 API 响应格式');
         }
-
-        showResults(data.choices[0].message.content);
+        
+        const content = data.choices[0].message.content;
+        debug.log('生成', 'API返回内容:', content);
+        
+        const names = parseNames(content);
+        showResult(names);
+        
     } catch (error) {
-        console.error('生成名字时出错:', error);
-        showError('生成名字时出错，请稍后重试');
+        debug.error('生成', '生成失败:', error);
+        showError(error.message || ERROR_MESSAGES.SERVER);
     } finally {
         hideLoading();
     }
 }
 
-// 监听输入框的回车事件
-document.getElementById('nameInput').addEventListener('keypress', function(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
+// 事件监听器
+generateBtn.addEventListener('click', generateNames);
+chineseNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
         generateNames();
     }
 });
-
-// 监听按钮点击事件
-document.getElementById('generateButton').addEventListener('click', generateNames);
-
-// HTML转义函数，防止XSS攻击
-function escapeHtml(unsafe) {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}

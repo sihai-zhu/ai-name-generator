@@ -7,28 +7,31 @@ const app = express();
 // 启用 JSON 解析
 app.use(express.json());
 
-// 请求日志记录中间件
+// 记录所有请求的中间件
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    const start = Date.now();
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} 开始处理`);
+    
+    // 在响应结束时记录
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} 处理完成 - 耗时: ${duration}ms`);
+    });
+    
+    next();
+});
+
+// 设置基本的安全头
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
 });
 
 // 配置静态文件服务
-app.use(express.static(path.join(__dirname, 'public'), {
-    maxAge: 86400000, // 24小时缓存
-    setHeaders: (res, filePath) => {
-        // 为 JavaScript 文件设置正确的 MIME 类型
-        if (filePath.endsWith('.js')) {
-            res.set('Content-Type', 'application/javascript; charset=UTF-8');
-        }
-        // 为 CSS 文件设置正确的 MIME 类型
-        else if (filePath.endsWith('.css')) {
-            res.set('Content-Type', 'text/css; charset=UTF-8');
-        }
-        // 设置缓存控制
-        res.set('Cache-Control', 'public, max-age=86400');
-    }
-}));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 主页路由
 app.get('/', (req, res) => {
@@ -42,76 +45,102 @@ app.get('/health', (req, res) => {
 
 // 代理 API 请求
 app.post('/api/generate-names', async (req, res) => {
-    console.log('收到名字生成请求:', req.body);
+    console.log('\n=== 开始处理名字生成请求 ===');
+    console.log('请求体:', JSON.stringify(req.body, null, 2));
     
     try {
-        console.log('开始调用 SiliconFlow API...');
-        const response = await fetch('https://api-prod.siliconflow.com/v1/chat/completions', {
+        // 验证请求格式
+        if (!req.body.messages || !Array.isArray(req.body.messages)) {
+            throw new Error('无效的请求格式：缺少 messages 数组');
+        }
+
+        // 构建请求体
+        const requestBody = {
+            model: "Pro/deepseek-ai/DeepSeek-R1",
+            messages: req.body.messages,
+            temperature: 0.7,
+            max_tokens: 2000,
+            stream: false
+        };
+        
+        console.log('\n发送到 API 的请求体:', JSON.stringify(requestBody, null, 2));
+
+        // 设置超时控制
+        const controller = new AbortController();
+        const timeout = setTimeout(() => {
+            controller.abort();
+            console.log('请求超时，正在中止...');
+        }, 120000);
+
+        console.log('\n开始调用 SiliconFlow API...');
+        const response = await fetch('https://api.siliconflow.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr'
+                'Authorization': 'Bearer sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                messages: req.body.messages,
-                model: "Pro/deepseek-ai/DeepSeek-R1",
-                temperature: 0.7,
-                max_tokens: 2000,
-                stream: false
-            }),
-            timeout: 30000 // 30秒超时
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
         });
-        
-        console.log('API 响应状态:', response.status);
-        
+
+        clearTimeout(timeout);
+
+        console.log('\nAPI 响应状态:', response.status);
+        console.log('API 响应头:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API 错误响应:', errorText);
-            throw new Error(`API responded with status: ${response.status}`);
+            throw new Error(`API responded with status: ${response.status}\nResponse: ${errorText}`);
         }
-        
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`意外的响应类型: ${contentType}`);
+        }
+
         const data = await response.json();
-        console.log('API 响应成功');
+        console.log('\nAPI 原始响应内容:', JSON.stringify(data, null, 2));
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            console.error('无效的 API 响应格式:', data);
+            throw new Error('API 响应格式无效');
+        }
+
+        console.log('\nAPI 生成的名字内容:', data.choices[0].message.content);
+        console.log('\n=== 名字生成请求处理完成 ===\n');
+
         res.json(data);
     } catch (error) {
-        console.error('API 调用出错:', error);
+        console.error('\n处理请求时出错:', error);
         res.status(500).json({
             error: '服务器内部错误',
-            message: '生成名字时出错，请稍后重试',
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            message: error.message || '生成名字时出错，请稍后重试',
+            timestamp: new Date().toISOString()
         });
     }
 });
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
-    console.error('应用错误:', err.stack);
+    console.error('应用错误:', err);
     res.status(500).json({
         error: '服务器内部错误',
-        message: process.env.NODE_ENV === 'development' ? err.message : '请稍后重试'
+        message: err.message || '请稍后重试',
+        timestamp: new Date().toISOString()
     });
 });
 
 // 获取服务器端口和主机
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';  // Railway 需要绑定到 0.0.0.0
+const PORT = process.env.PORT || 8080;
+const HOST = process.env.HOST || 'localhost';
 
 // 启动服务器
 const server = app.listen(PORT, HOST, () => {
-    console.log(`服务器已启动，运行在 ${HOST}:${PORT}`);
+    console.log(`\n=== 服务器启动 ===`);
+    console.log(`时间: ${new Date().toISOString()}`);
+    console.log(`地址: http://${HOST}:${PORT}`);
     console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
-    console.log('你可以通过以下地址访问:');
-    console.log(`- 本地访问: http://localhost:${PORT}`);
-    if (HOST === '0.0.0.0') {
-        console.log(`- 外部访问: http://${HOST}:${PORT}`);
-    }
-});
-
-// 优雅关闭
-process.on('SIGTERM', () => {
-    console.log('收到 SIGTERM 信号: 正在关闭 HTTP 服务器');
-    server.close(() => {
-        console.log('HTTP 服务器已关闭');
-        process.exit(0);
-    });
+    console.log(`=== 服务器就绪 ===\n`);
 });
