@@ -134,7 +134,7 @@ app.use((err, req, res, next) => {
 
 // 获取服务器端口和主机
 const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || 'localhost';
+const HOST = '0.0.0.0';
 
 // 启动服务器
 const server = app.listen(PORT, HOST, () => {
