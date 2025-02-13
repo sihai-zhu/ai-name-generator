@@ -4,10 +4,6 @@ const path = require('path');
 const fetch = require('node-fetch');
 const app = express();
 
-// 启用压缩
-const compression = require('compression');
-app.use(compression());
-
 // 启用 JSON 解析
 app.use(express.json());
 
@@ -16,29 +12,6 @@ app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
-
-// 设置安全相关的 HTTP 头
-const helmet = require('helmet');
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: [
-                "'self'", 
-                "'unsafe-inline'",
-                "'unsafe-eval'",
-                "'unsafe-hashes'",
-                "https://cdn.jsdelivr.net"
-            ],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api-prod.siliconflow.com"],
-            upgradeInsecureRequests: []
-        }
-    },
-    crossOriginEmbedderPolicy: false
-}));
 
 // 配置静态文件服务
 app.use(express.static(path.join(__dirname, 'public'), {
