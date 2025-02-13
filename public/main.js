@@ -9,6 +9,13 @@ const chineseNameInput = document.getElementById('chineseName');
 const resultArea = document.getElementById('result');
 const loadingSpinner = document.getElementById('loading');
 
+// 初始化检查
+console.log('main.js 加载完成');
+console.log('按钮元素:', generateBtn);
+console.log('输入框元素:', chineseNameInput);
+console.log('结果区域元素:', resultArea);
+console.log('加载动画元素:', loadingSpinner);
+
 // 错误消息
 const ERROR_MESSAGES = {
     NETWORK: '网络连接错误，请检查您的网络连接并重试。',
@@ -236,9 +243,17 @@ async function generateNames() {
 }
 
 // 事件监听器
-generateBtn.addEventListener('click', generateNames);
-chineseNameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        generateNames();
-    }
-});
+if (generateBtn && chineseNameInput) {
+    debug.log('初始化', '添加事件监听器');
+    generateBtn.addEventListener('click', generateNames);
+    chineseNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            generateNames();
+        }
+    });
+} else {
+    debug.error('初始化', '找不到必要的 DOM 元素:', {
+        generateBtn: !!generateBtn,
+        chineseNameInput: !!chineseNameInput
+    });
+}
