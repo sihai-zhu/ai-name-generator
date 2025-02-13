@@ -1,0 +1,21 @@
+{
+    "name": "AI英文取名",
+    "short_name": "AI取名",
+    "description": "基于 DeepSeek-R1 模型的智能英文名生成器",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
