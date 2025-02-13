@@ -1,23 +1,67 @@
 // Express服务器配置
 const express = require('express');
 const path = require('path');
+const fetch = require('node-fetch');
 const app = express();
 
-// 配置静态文件服务，明确指定 MIME 类型
-app.use('/public', express.static(path.join(__dirname, 'public'), {
-    setHeaders: (res, path, stat) => {
-        if (path.endsWith('.css')) {
-            res.set('Content-Type', 'text/css');
+// 启用压缩
+const compression = require('compression');
+app.use(compression());
+
+// 启用 JSON 解析
+app.use(express.json());
+
+// 请求日志记录中间件
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+// 设置安全相关的 HTTP 头
+const helmet = require('helmet');
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'",
+                "'unsafe-eval'",
+                "'unsafe-hashes'",
+                "https://cdn.jsdelivr.net"
+            ],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "https://api-prod.siliconflow.com"],
+            upgradeInsecureRequests: []
         }
-        if (path.endsWith('.js')) {
-            res.set('Content-Type', 'application/javascript');
+    },
+    crossOriginEmbedderPolicy: false
+}));
+
+// 配置静态文件服务
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: 86400000, // 24小时缓存
+    setHeaders: (res, filePath) => {
+        // 为 JavaScript 文件设置正确的 MIME 类型
+        if (filePath.endsWith('.js')) {
+            res.set('Content-Type', 'application/javascript; charset=UTF-8');
         }
+        // 为 CSS 文件设置正确的 MIME 类型
+        else if (filePath.endsWith('.css')) {
+            res.set('Content-Type', 'text/css; charset=UTF-8');
+        }
+        // 设置缓存控制
+        res.set('Cache-Control', 'public, max-age=86400');
+        // 添加调试头
+        res.set('X-Debug-Path', filePath);
     }
 }));
 
-// 路由配置
+// 主页路由
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 代理 API 请求
@@ -63,12 +107,29 @@ app.post('/api/generate-names', async (req, res) => {
     }
 });
 
-// 启动服务器
-const PORT = process.env.PORT || 8080;
-const HOST = '0.0.0.0';  // 允许从任何IP访问
+// 错误处理中间件
+app.use((err, req, res, next) => {
+    console.error('应用错误:', err.stack);
+    res.status(500).json({
+        error: '服务器内部错误',
+        message: process.env.NODE_ENV === 'development' ? err.message : '请稍后重试'
+    });
+});
 
-app.listen(PORT, HOST, () => {
-    console.log(`服务器已启动！`);
-    console.log(`你的朋友可以通过以下地址访问：`);
-    console.log(`http://localhost:${PORT}`);
+// 获取服务器端口
+const PORT = process.env.PORT || 3000;
+
+// 启动服务器
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+});
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
 });
