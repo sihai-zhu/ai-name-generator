@@ -5,7 +5,7 @@ const TIMEOUT = 120000;
 
 // 元素引用
 const generateBtn = document.getElementById('generateBtn');
-const chineseNameInput = document.getElementById('chineseName');
+const chineseNameInput = document.getElementById('chineseName');  
 const resultArea = document.getElementById('result');
 const loadingSpinner = document.getElementById('loading');
 
@@ -17,7 +17,73 @@ console.log('结果区域元素:', resultArea);
 console.log('加载动画元素:', loadingSpinner);
 
 // 导出生成名字函数供全局使用
-window.generateNames = generateNames;
+window.generateNames = async function() {
+    console.log('generateNames 函数被调用');
+    const chineseName = chineseNameInput ? chineseNameInput.value.trim() : '';
+    console.log('输入的中文名:', chineseName);
+    
+    // 输入验证
+    if (!chineseName || !/^[\u4e00-\u9fa5]{1,10}$/.test(chineseName)) {
+        console.error('输入验证失败');
+        showError(ERROR_MESSAGES.INVALID_INPUT);
+        return;
+    }
+    
+    showLoading();
+    console.log('显示加载动画');
+    
+    try {
+        console.log('准备发送 API 请求');
+        const response = await fetchWithRetry(API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: "system",
+                        content: "你是一个专业的英文名字起名专家。请只返回英文名字，不要返回解释。"
+                    },
+                    {
+                        role: "user",
+                        content: `请根据我的中文名字"${chineseName}"，生成5个适合我的英文名字，每行一个，前面加上序号。`
+                    }
+                ]
+            })
+        });
+        
+        console.log('收到 API 响应:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API 错误:', response.status, errorText);
+            throw new Error(response.status >= 500 ? ERROR_MESSAGES.SERVER : errorText);
+        }
+        
+        const data = await response.json();
+        console.log('API 返回数据:', data);
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            console.error('无效的 API 响应格式:', data);
+            throw new Error('无效的 API 响应格式');
+        }
+        
+        const content = data.choices[0].message.content;
+        console.log('解析前的内容:', content);
+        
+        const names = parseNames(content);
+        console.log('解析后的名字:', names);
+        
+        showResult(names);
+        
+    } catch (error) {
+        console.error('生成失败:', error);
+        showError(error.message || ERROR_MESSAGES.SERVER);
+    } finally {
+        hideLoading();
+    }
+};
 
 // 错误消息
 const ERROR_MESSAGES = {
@@ -184,64 +250,6 @@ async function fetchWithRetry(url, options, retries = MAX_RETRIES, timeout = TIM
             debug.log('请求', `等待 ${waitTime}ms 后重试`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
-    }
-}
-
-// 生成名字
-async function generateNames() {
-    const chineseName = chineseNameInput.value.trim();
-    debug.log('生成', '开始生成名字，输入:', chineseName);
-    
-    // 输入验证
-    if (!chineseName || !/^[\u4e00-\u9fa5]{1,10}$/.test(chineseName)) {
-        debug.error('生成', '输入验证失败');
-        showError(ERROR_MESSAGES.INVALID_INPUT);
-        return;
-    }
-    
-    showLoading();
-    
-    try {
-        debug.log('生成', '准备发送请求');
-        const data = await fetchWithRetry(
-            API_ENDPOINT,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    messages: [
-                        {
-                            role: "system",
-                            content: "你是一个专业的英文名字起名专家。请只返回英文名字，不要返回解释。"
-                        },
-                        {
-                            role: "user",
-                            content: `请根据我的中文名字"${chineseName}"，生成5个适合我的英文名字，每行一个，前面加上序号。`
-                        }
-                    ]
-                })
-            }
-        );
-        
-        debug.log('生成', '收到API响应');
-        
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error('无效的 API 响应格式');
-        }
-        
-        const content = data.choices[0].message.content;
-        debug.log('生成', 'API返回内容:', content);
-        
-        const names = parseNames(content);
-        showResult(names);
-        
-    } catch (error) {
-        debug.error('生成', '生成失败:', error);
-        showError(error.message || ERROR_MESSAGES.SERVER);
-    } finally {
-        hideLoading();
     }
 }
 
