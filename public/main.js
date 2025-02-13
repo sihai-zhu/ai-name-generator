@@ -33,7 +33,7 @@ const meanings = {
 };
 
 // API参数配置
-const API_ENDPOINT = 'https://api.siliconflow.cn/v1/chat/completions';
+const API_ENDPOINT = 'https://api-prod.siliconflow.com/v1/chat/completions';  // 使用更稳定的域名
 const MODEL_NAME = 'Pro/deepseek-ai/DeepSeek-R1';
 const API_KEY = 'sk-zdonnlmvneeywanlpjyvdiwvvwrcsrwovktugsojsipwtvpr';
 
@@ -69,14 +69,21 @@ async function generateNames() {
         const errorDiv = document.getElementById('error');
         errorDiv.style.display = 'none';
 
+        // 添加超时处理
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时
+
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${API_KEY}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error('网络请求失败，请稍后重试');
@@ -100,51 +107,17 @@ async function generateNames() {
             jsonStr = jsonMatch[0];
         }
 
-        try {
-            // 尝试解析JSON数据
-            const namesData = JSON.parse(jsonStr);
-            
-            // 验证数据格式
-            if (!namesData.names || !Array.isArray(namesData.names)) {
-                throw new Error('数据格式不正确');
-            }
-
-            // 确保每个名字对象都有必要的属性
-            const validNames = namesData.names.map(item => ({
-                english_name: item.english_name || '未知名字',
-                meaning: item.meaning || '暂无解释'
-            }));
-
-            displayResults({ names: validNames });
-        } catch (e) {
-            console.error('JSON解析错误:', e);
-            console.error('原始内容:', content);
-            
-            // 如果JSON解析失败，尝试使用正则表达式提取名字和含义
-            const names = [];
-            const nameMatches = content.match(/[A-Za-z]+\s+[A-Za-z]+/g) || [];
-            const meanings = content.split('\n').filter(line => line.includes('：') || line.includes(':'));
-            
-            for (let i = 0; i < Math.min(nameMatches.length, meanings.length); i++) {
-                names.push({
-                    english_name: nameMatches[i],
-                    meaning: meanings[i].replace(/^[^：:]+[：:]/, '').trim()
-                });
-            }
-
-            if (names.length > 0) {
-                displayResults({ names });
-            } else {
-                throw new Error('无法解析返回的数据，请重试');
-            }
-        }
-
+        // 解析JSON
+        const jsonData = JSON.parse(jsonStr);
+        
+        // 显示结果
+        displayResults(jsonData);
     } catch (error) {
-        console.error('错误详情:', error);
-        showError(error.message || '生成失败，请稍后重试');
-        // 清除加载动画
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.style.display = 'none';
+        if (error.name === 'AbortError') {
+            showError('请求超时，请检查网络连接后重试');
+        } else {
+            showError(error.message || '生成失败，请稍后重试');
+        }
     }
 }
 
