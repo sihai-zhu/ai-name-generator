@@ -6,7 +6,7 @@
     <title>AI英文取名</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    <script src="main.js"></script>
+    <script src="main.js" defer></script>
 </head>
 <body>
     <main class="container">
@@ -17,7 +17,7 @@
                    id="nameInput"
                    placeholder="请输入中文姓名"
                    aria-label="中文姓名输入框">
-            <button onclick="generateNames()">
+            <button id="generateButton">
                 生成个性英文名
             </button>
         </div>
