@@ -119,16 +119,19 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 获取服务器端口
+// 获取服务器端口和主机
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';  // Railway 需要绑定到 0.0.0.0
 
 // 启动服务器
-const server = app.listen(PORT, () => {
-    console.log(`服务器已启动，运行在端口 ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+    console.log(`服务器已启动，运行在 ${HOST}:${PORT}`);
     console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
     console.log('你可以通过以下地址访问:');
     console.log(`- 本地访问: http://localhost:${PORT}`);
-    console.log(`- 局域网访问: http://127.0.0.1:${PORT}`);
+    if (HOST === '0.0.0.0') {
+        console.log(`- 外部访问: http://${HOST}:${PORT}`);
+    }
 });
 
 // 优雅关闭
